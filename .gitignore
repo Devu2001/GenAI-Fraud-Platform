@@ -1,0 +1,29 @@
+# Dependencies
+node_modules/
+backend/venv/
+backend/.venv/
+backend/env/
+__pycache__/
+*.py[cod]
+backend/auth.pyc
+
+# Next.js
+frontend/.next/
+frontend/out/
+frontend/build/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Database & Sensitive
+backend/*.db
+backend/*.sqlite3
+.env
+.env.local
+frontend/.env*
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+*.log
