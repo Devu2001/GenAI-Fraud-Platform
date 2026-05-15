@@ -7,3 +7,4 @@ aiosqlite
 python-jose[cryptography]
 passlib[bcrypt]
 torch
+psycopg2-binary
