@@ -111,7 +111,7 @@ export default function Login() {
             onClick={() => window.location.href = '/'} 
             style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '0.875rem', textDecoration: 'underline' }}
           >
-            ← Back to Landing Page
+            ← Back to Home Page
           </button>
         </div>
       </div>
