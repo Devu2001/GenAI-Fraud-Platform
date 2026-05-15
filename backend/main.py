@@ -11,6 +11,7 @@ from fastapi.security import OAuth2PasswordRequestForm
 from database import engine, get_db
 import models
 import auth
+import ml_models
 
 # Create database tables
 models.Base.metadata.create_all(bind=engine)
@@ -25,24 +26,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Mock User DB for prototype
-MOCK_USERS = {
-    "admin": {
-        "username": "admin",
-        "hashed_password": auth.get_password_hash("admin123"),
-        "role": "Admin"
-    },
-    "analyst": {
-        "username": "analyst",
-        "hashed_password": auth.get_password_hash("analyst123"),
-        "role": "Analyst"
-    }
-}
-
 @app.post("/api/auth/token")
-async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends()):
-    user = MOCK_USERS.get(form_data.username)
-    if not user or not auth.verify_password(form_data.password, user["hashed_password"]):
+async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+    user = db.query(models.User).filter(models.User.username == form_data.username).first()
+    if not user or not auth.verify_password(form_data.password, user.hashed_password):
         raise HTTPException(
             status_code=401,
             detail="Incorrect username or password",
@@ -50,22 +37,44 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
         )
     access_token_expires = timedelta(minutes=auth.ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = auth.create_access_token(
-        data={"sub": user["username"], "role": user["role"]}, expires_delta=access_token_expires
+        data={"sub": user.username, "role": user.role}, expires_delta=access_token_expires
     )
-    return {"access_token": access_token, "token_type": "bearer", "role": user["role"]}
+    return {"access_token": access_token, "token_type": "bearer", "role": user.role}
 
 # Helper to seed database on startup if empty
 def seed_db(db: Session):
+    # Seed Users
+    if db.query(models.User).count() == 0:
+        admin = models.User(
+            username="admin",
+            hashed_password=auth.get_password_hash("admin123"),
+            role="Admin"
+        )
+        analyst = models.User(
+            username="analyst",
+            hashed_password=auth.get_password_hash("analyst123"),
+            role="Analyst"
+        )
+        db.add(admin)
+        db.add(analyst)
+        db.commit()
+
     if db.query(models.Transaction).count() == 0:
         for _ in range(50):
-            is_fraud = random.random() < 0.05
+            amount = round(random.uniform(10.0, 5000.0), 2)
+            lat = random.uniform(-90, 90)
+            lng = random.uniform(-180, 180)
+            
+            # Use real ML inference for seeding
+            risk_score, is_fraud = ml_models.inference_anomaly_score(amount, lat, lng)
+            
             txn = models.Transaction(
                 id=f"txn_{random.randint(100000, 999999)}",
-                amount=round(random.uniform(10.0, 5000.0), 2),
-                risk_score=round(random.uniform(0.7, 1.0) if is_fraud else random.uniform(0.01, 0.4), 3),
+                amount=amount,
+                risk_score=risk_score,
                 is_anomaly=is_fraud,
-                location_lat=random.uniform(-90, 90),
-                location_lng=random.uniform(-180, 180)
+                location_lat=lat,
+                location_lng=lng
             )
             db.add(txn)
         
@@ -116,17 +125,14 @@ def get_xai_details(txn_id: str):
     }
 
 @app.post("/api/gan/generate")
-async def generate_synthetic_data(num_samples: int = 100, current_user: dict = Depends(auth.get_current_user)):
+async def generate_synthetic_data(num_samples: int = 10, current_user: dict = Depends(auth.get_current_user)):
     if current_user.get("role") != "Admin":
         raise HTTPException(status_code=403, detail="Only Admins can generate data")
-    await asyncio.sleep(2)
-    synthetic_samples = []
-    for _ in range(num_samples):
-        synthetic_samples.append({
-            "amount": round(random.uniform(500.0, 10000.0), 2),
-            "risk_score": round(random.uniform(0.8, 1.0), 3)
-        })
-    return {"status": "success", "samples_generated": num_samples, "data": synthetic_samples}
+    
+    # Use real PyTorch GAN Generator
+    await asyncio.sleep(1) # Simulate processing
+    data = ml_models.generate_synthetic_fraud(num_samples)
+    return {"status": "success", "samples_generated": num_samples, "data": data}
 
 @app.get("/api/analytics")
 def get_analytics(db: Session = Depends(get_db)):
@@ -158,23 +164,22 @@ async def evaluate_csv(file: UploadFile = File(...), current_user: dict = Depend
         # Decode contents to string and read with pandas
         df = pd.read_csv(io.StringIO(contents.decode('utf-8')))
         
-        # Expected columns: amount, location_lat, location_lng
-        # Ensure they exist or create dummy columns
-        if 'amount' not in df.columns:
-            df['amount'] = [round(random.uniform(10.0, 5000.0), 2) for _ in range(len(df))]
-        
         results = []
         for index, row in df.iterrows():
-            is_fraud = random.random() < 0.15 # 15% anomaly rate for the batch
-            risk_score = round(random.uniform(0.75, 1.0) if is_fraud else random.uniform(0.01, 0.4), 3)
+            amount = float(row.get('amount', random.uniform(10.0, 5000.0)))
+            lat = float(row.get('location_lat', random.uniform(-90, 90)))
+            lng = float(row.get('location_lng', random.uniform(-180, 180)))
+            
+            # Use real ML inference for batch evaluation
+            risk_score, is_fraud = ml_models.inference_anomaly_score(amount, lat, lng)
             
             results.append({
                 "id": f"batch_{index}_{random.randint(1000,9999)}",
-                "amount": float(row['amount']),
+                "amount": amount,
                 "risk_score": risk_score,
                 "is_anomaly": is_fraud,
-                "location_lat": float(row.get('location_lat', random.uniform(-90, 90))),
-                "location_lng": float(row.get('location_lng', random.uniform(-180, 180)))
+                "location_lat": lat,
+                "location_lng": lng
             })
             
         return {"status": "success", "evaluated_records": len(results), "data": results}
@@ -188,21 +193,19 @@ async def websocket_endpoint(websocket: WebSocket):
     try:
         while True:
             await asyncio.sleep(random.uniform(0.5, 3.0))
-            is_fraud = random.random() < 0.08
-            
-            # Simulated real-world hotspots for fraud (e.g. certain coordinates)
-            if is_fraud and random.random() < 0.5:
-                lat = random.uniform(30, 50) # NA/Europe
-                lng = random.uniform(-10, 20)
-            else:
-                lat = random.uniform(-90, 90)
-                lng = random.uniform(-180, 180)
+            # Real-world simulation parameters
+            amount = round(random.uniform(5.0, 8000.0), 2)
+            lat = random.uniform(30, 50) if random.random() < 0.3 else random.uniform(-90, 90)
+            lng = random.uniform(-10, 20) if random.random() < 0.3 else random.uniform(-180, 180)
+
+            # Use REAL PyTorch VAE Inference
+            risk_score, is_fraud = ml_models.inference_anomaly_score(amount, lat, lng)
 
             txn_id = f"txn_{random.randint(100000, 999999)}"
             txn = models.Transaction(
                 id=txn_id,
-                amount=round(random.uniform(5.0, 3000.0), 2),
-                risk_score=round(random.uniform(0.75, 1.0) if is_fraud else random.uniform(0.01, 0.35), 3),
+                amount=amount,
+                risk_score=risk_score,
                 is_anomaly=is_fraud,
                 location_lat=lat,
                 location_lng=lng
