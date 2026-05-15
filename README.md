@@ -2,6 +2,8 @@
 
 ## 🛡️ MCA Major Project - Final Year
 
+### 🌐 [Live Demo Website](https://endearing-sorbet-a4f0c0.netlify.app) | 📊 [Live Dashboard](https://endearing-sorbet-a4f0c0.netlify.app/dashboard)
+
 GenAI CyberGuard is an enterprise-grade fraud detection framework designed to identify sophisticated financial threats in real-time. By combining **Generative Adversarial Networks (GANs)** for synthetic data generation and **Variational Autoencoders (VAEs)** for zero-day anomaly detection, the platform solves the "imbalanced data" problem inherent in financial fraud.
 
 ## 🚀 Key Features
