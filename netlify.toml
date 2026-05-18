@@ -8,4 +8,4 @@
 
 [build.environment]
   NEXT_USE_NETLIFY_EDGE = "true"
-  NEXT_PUBLIC_API_URL = "https://todo-list-production-7396.up.railway.app"
+  NEXT_PUBLIC_API_URL = "https://genai-fraud-backend.onrender.com"
