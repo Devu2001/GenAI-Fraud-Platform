@@ -12,7 +12,8 @@ export default function GANHub() {
     setMessage("");
     try {
       const token = localStorage.getItem("genai_token");
-      const response = await fetch("http://localhost:8000/api/gan/generate?num_samples=500", { 
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+      const response = await fetch(`${baseUrl}/api/gan/generate?num_samples=500`, { 
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`

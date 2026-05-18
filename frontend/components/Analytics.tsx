@@ -10,7 +10,8 @@ export default function Analytics() {
 
   useEffect(() => {
     // Fetch mock analytics data
-    fetch('http://localhost:8000/api/analytics')
+    const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+    fetch(`${baseUrl}/api/analytics`)
       .then(res => res.json())
       .then(result => {
         if(result.history) setData(result.history);

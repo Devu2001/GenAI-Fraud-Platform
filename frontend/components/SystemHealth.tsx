@@ -8,7 +8,8 @@ export default function SystemHealth() {
 
   useEffect(() => {
     const fetchHealth = () => {
-      fetch('http://localhost:8000/api/system/health')
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+      fetch(`${baseUrl}/api/system/health`)
         .then(res => res.json())
         .then(data => setHealth(data))
         .catch(err => console.error(err));

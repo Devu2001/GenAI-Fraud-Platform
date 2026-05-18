@@ -24,7 +24,8 @@ export default function BatchEvaluator() {
 
     try {
       const token = localStorage.getItem("genai_token");
-      const response = await fetch('http://localhost:8000/api/evaluate-csv', {
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+      const response = await fetch(`${baseUrl}/api/evaluate-csv`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`

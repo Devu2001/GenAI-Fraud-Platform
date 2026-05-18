@@ -56,7 +56,8 @@ export default function Home() {
       document.documentElement.setAttribute('data-theme', storedTheme);
     }
 
-    fetch('http://localhost:8000/api/transactions?limit=20')
+    const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+    fetch(`${baseUrl}/api/transactions?limit=20`)
       .then(res => res.json())
       .then(data => {
         if(data.transactions) setTransactions(data.transactions.reverse());
@@ -64,7 +65,9 @@ export default function Home() {
       .catch(err => console.error(err));
 
     const connectWS = () => {
-      ws.current = new WebSocket('ws://localhost:8000/ws/transactions');
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+      const wsUrl = baseUrl.replace(/^http/, 'ws');
+      ws.current = new WebSocket(`${wsUrl}/ws/transactions`);
       ws.current.onmessage = (event) => {
         const txn = JSON.parse(event.data);
         setTransactions(prev => [...prev, txn].slice(-50));
