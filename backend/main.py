@@ -20,7 +20,7 @@ app = FastAPI(title="GenAI Fraud Detection API")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["https://endearing-sorbet-a4f0c0.netlify.app", "http://localhost:3000"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
